@@ -1,14 +1,17 @@
 package com.bart.crawler;
 
-import com.bart.crawler.storage.CrawlerLinkStorage;
+import com.bart.crawler.storage.*;
 import com.bart.crawler.model.Link;
 import com.bart.crawler.model.LinkType;
-import com.bart.crawler.storage.ExternalDomainSkipCrawlingMarker;
-import com.bart.crawler.storage.SkipCrawlingMarker;
-import com.bart.crawler.storage.TypeSkipCrawlingMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
 
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -19,62 +22,88 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Created by bart on 22/01/2017.
  */
+@Service
+@Scope("prototype")
 public class Crawler {
     private final static Logger logger = LoggerFactory.getLogger(Crawler.class);
 
-    private LinkProcessor linkProcessor = new LinkProcessor();
-    private AtomicInteger iterationCounter = new AtomicInteger(0);
-    private CrawlerLinkStorage storage;
+    private LinkProcessor linkProcessor;
 
-    private int batchSize = 10;
-    private int poolSize = 2;
-    private long sleep = 15 * 1000;
+    @Autowired
+    private ApplicationContext applicationContext;
 
-    public Crawler(String url) {
-        Link link;
-        try {
-            link = new Link(url, LinkType.PAGE);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Invalid url: " + url + " given!");
-        }
-        storage = new CrawlerLinkStorage(
-                Arrays.asList(new ExternalDomainSkipCrawlingMarker(link.getUri()), new TypeSkipCrawlingMarker())
-        );
-        storage.addLink(link);
+//    @Autowired
+//    List<SkipCrawlingMarker> basicMarkers;
+
+    @Value("${crawler.batch.size:10}")
+    private int batchSize;
+    @Value("${crawler.pool.size:2}")
+    private int poolSize ;
+    @Value("${crawler.sleep.time:15000}")
+    private long sleep;
+
+
+    public Crawler(LinkProcessor linkProcessor) {
+        this.linkProcessor = linkProcessor;
     }
 
+    public void init() {
 
-    public void execute() throws Exception {
-        if (iterationCounter.get() > 0) {
-            throw new IllegalStateException("Crawler cannot be reused");
-        }
-        ExecutorService executorService = null;
-        while (storage.getAwaitingNumber() > 0) {
-            List<CrawlerCallable> batch = createBatch(storage, batchSize);
+    }
 
-            logger.info("Iteration: {} batch size: {}", iterationCounter.incrementAndGet(), batch.size());
+    public Set<Link> execute(String url) throws Exception {
+        Link link = createLink(url);
+        CrawlerStorageAdapter storageAdapter = new CrawlerStorageAdapter(new CrawlerLinkStorage(), prepareMarkers(link));
 
+        //add first link
+        storageAdapter.addLink(link);
+        runIterations(storageAdapter);
+
+        return storageAdapter.getCrawledLinks();
+    }
+
+    private void runIterations(CrawlerStorageAdapter storageAdapter) throws InterruptedException {
+        logger.info("Running Crawler Iterations");
+        logger.info("batchSize: {} poolSize: {} sleep time after iteration: {}", batchSize, poolSize, sleep);
+
+        ExecutorService executorService;
+        int i = 0;
+        while (storageAdapter.hasAwaitingLinks()) {
+            List<CrawlerCallable> batch = createBatch(storageAdapter, batchSize);
+            logger.info("Iteration: {} batch size: {}", ++i, batch.size());
             executorService = Executors.newFixedThreadPool(poolSize);
-            List<Future<Void>> results = executorService.invokeAll(batch);
+            executorService.invokeAll(batch);
             executorService.shutdown();
             Thread.sleep(sleep);
         }
     }
 
-    public Set<Link> getLinks() {
-        return Collections.unmodifiableSet(storage.getCrawled().keySet());
+    private Link createLink(String url) {
+        try {
+            return new Link(url, LinkType.PAGE);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid url: " + url + " given!");
+        }
+
     }
 
+    private List<SkipCrawlingMarker> prepareMarkers(Link link) {
+        List<SkipCrawlingMarker> markers = new ArrayList<>();
+        markers.addAll((List<SkipCrawlingMarker>) applicationContext.getBean("basicMarkers"));
+        markers.add(new ExternalDomainSkipCrawlingMarker(link.getUri()));
+        return  markers;
 
-    private List<CrawlerCallable> createBatch(CrawlerLinkStorage storage, int batchSize) {
+    }
+
+    private List<CrawlerCallable> createBatch(CrawlerStorageAdapter adapter, int batchSize) {
         List<CrawlerCallable> iterations = new ArrayList<>(batchSize);
-        Link currentLink = null;
+        Link currentLink;
         for (int i = 0; i < batchSize; i++) {
-            currentLink = storage.retrieveAwaiting();
+            currentLink = adapter.retrieveAwaiting();
             if (currentLink == null) {
                 break;
             }
-            iterations.add(new CrawlerCallable(currentLink, linkProcessor, storage));
+            iterations.add(new CrawlerCallable(currentLink, linkProcessor, adapter));
         }
         return iterations;
     }

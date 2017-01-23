@@ -6,6 +6,7 @@ import com.bart.crawler.model.Link;
 import com.bart.crawler.util.URIUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -13,11 +14,15 @@ import org.springframework.context.ConfigurableApplicationContext;
 import java.io.*;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 @SpringBootApplication
 public class Application {
 
     private final static Logger logger = LoggerFactory.getLogger(Application.class);
+
+    @Autowired
+    Crawler crawler;
 
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
@@ -32,12 +37,12 @@ public class Application {
 
     private void start(String url, String path) throws Exception {
         logger.info("Crawling domain: {}", url);
-        Crawler crawler = new Crawler(url);
-        crawler.execute();
+//        Crawler crawler = new Crawler(url);
+        Set<Link> links = crawler.execute(url);
         logger.info("Finished crawling domain: {}", url);
 
         logger.info("Writing found links to: {}", path == null ? "console" : path);
-        printSiteMap(crawler.getLinks(), new Link(url, LinkType.PAGE), buildWriter(path));
+        printSiteMap(links, new Link(url, LinkType.PAGE), buildWriter(path));
     }
 
 

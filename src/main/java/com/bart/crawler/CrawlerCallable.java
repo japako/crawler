@@ -2,6 +2,7 @@ package com.bart.crawler;
 
 import com.bart.crawler.storage.CrawlerLinkStorage;
 import com.bart.crawler.model.Link;
+import com.bart.crawler.storage.CrawlerStorageAdapter;
 
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -12,25 +13,27 @@ import java.util.concurrent.Callable;
 public class CrawlerCallable implements Callable<Void> {
 
     private LinkProcessor linkProcessor;
-    private CrawlerLinkStorage storage;
+    private CrawlerStorageAdapter adapter;
     private Link currentLink;
 
-    public CrawlerCallable(Link currentLink, LinkProcessor linkProcessor, CrawlerLinkStorage storage) {
+    public CrawlerCallable(Link currentLink, LinkProcessor linkProcessor, CrawlerStorageAdapter adapter) {
         this.linkProcessor = linkProcessor;
-        this.storage = storage;
+        this.adapter = adapter;
         this.currentLink = currentLink;
     }
 
 
-    public void processAndUpdateStorageWithLinks(Link currentLink, CrawlerLinkStorage storage) {
-        List<Link> links = linkProcessor.execute(currentLink);
-        storage.addLinkToCrawled(currentLink);
-        storage.addLinks(links);
-    }
+
 
     @Override
     public Void call() throws Exception {
-        processAndUpdateStorageWithLinks(currentLink, storage);
+        processAndUpdateStorageWithLinks(currentLink);
         return null;
+    }
+
+    private void processAndUpdateStorageWithLinks(Link currentLink) {
+        List<Link> links = linkProcessor.execute(currentLink);
+        adapter.addCrawledLink(currentLink);
+        adapter.addLinks(links);
     }
 }

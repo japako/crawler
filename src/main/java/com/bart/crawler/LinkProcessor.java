@@ -1,29 +1,33 @@
 package com.bart.crawler;
 
 import com.bart.crawler.model.Link;
-import com.bart.crawler.parser.ImgLinkExtractor;
-import com.bart.crawler.parser.PageLinkExtractor;
 import com.bart.crawler.parser.Parser;
-import com.bart.crawler.util.URIUtil;
 import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Created by bart on 21/01/2017.
  */
+@Service
+@Profile("!test")
 public class LinkProcessor {
-    private static final Logger logger = LoggerFactory.getLogger(LinkProcessor.class);
 
-    public Parser parser = new Parser(Arrays.asList(new PageLinkExtractor(), new ImgLinkExtractor()));
+    private static final Logger logger = LoggerFactory.getLogger(LinkProcessor.class);
+    private Parser parser;
+
+    public LinkProcessor(Parser parser) {
+        this.parser = parser;
+    }
+
 
     public List<Link> execute(Link current) {
         String url = current.getUri().toString();

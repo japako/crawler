@@ -2,15 +2,18 @@ package com.bart.crawler.storage;
 
 
 import com.bart.crawler.model.Link;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import static java.lang.Boolean.*;
+
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
 
 /**
  * Created by bart on 22/01/2017.
@@ -24,31 +27,14 @@ public class CrawlerLinkStorage {
     private Map<Link, Boolean> crawled = new ConcurrentHashMap<>();
     private Map<Link, Boolean> awaiting = new ConcurrentHashMap<>();
 
-    private List<SkipCrawlingMarker> markers;
-
-    public CrawlerLinkStorage(List<SkipCrawlingMarker> markers) {
-        this.markers = markers;
-    }
-
     public void addLink(Link link) {
-        boolean skipCrawling = skipCrawl(link);
-
         write.lock();
         if (!crawled.containsKey(link)) {
-            if(skipCrawling) {
-                crawled.put(link, FALSE);
-            } else if (!awaiting.containsKey(link) || FALSE.equals(awaiting.get(link))) {
+            if (!awaiting.containsKey(link) || FALSE.equals(awaiting.get(link))) {
                 awaiting.put(link, FALSE);
             }
         }
         write.unlock();
-
-    }
-
-    public void addLinks(List<Link> links) {
-        for (Link link : links) {
-            addLink(link);
-        }
     }
 
 
@@ -70,7 +56,7 @@ public class CrawlerLinkStorage {
     }
 
 
-    public void addLinkToCrawled(Link link) {
+    public void addCrawledLink(Link link) {
         write.lock();
         awaiting.remove(link);
         crawled.put(link, FALSE);
@@ -82,19 +68,6 @@ public class CrawlerLinkStorage {
         int result = awaiting.size();
         read.unlock();
         return result;
-    }
-
-    private boolean skipCrawl(Link link) {
-        for(SkipCrawlingMarker marker: markers) {
-            if(marker.skipCrawling(link)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public Map<Link, Boolean> getAwaiting() {
-        return Collections.unmodifiableMap(awaiting);
     }
 
     public Map<Link, Boolean> getCrawled() {
