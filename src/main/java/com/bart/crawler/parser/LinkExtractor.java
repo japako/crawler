@@ -29,11 +29,11 @@ public abstract class LinkExtractor {
 
     public List<Link> extract(Document document) throws URISyntaxException {
         Elements elements = document.getElementsByTag(elementName);
-        List<Link> result = null;
+        List<Link> result;
         if (!elements.isEmpty()) {
             result = new ArrayList<>();
-            Link link = null;
-            String attrValue = null;
+            Link link;
+            String attrValue;
             for (Element element : elements) {
                 attrValue = element.attr(elementAttr);
                 try {
@@ -43,10 +43,7 @@ public abstract class LinkExtractor {
                     }
                 } catch (URISyntaxException e) {
                     logger.debug("Invalid link {}", attrValue);
-
-
                 }
-
             }
         } else {
             result = Collections.emptyList();

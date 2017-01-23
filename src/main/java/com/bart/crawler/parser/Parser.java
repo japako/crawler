@@ -5,6 +5,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -12,11 +13,19 @@ import java.util.List;
  */
 public class Parser {
 
-    private LinkExtractor pageLinkExtractor = new PageLinkExtractor();
+    private List<LinkExtractor> pageLinkExtractor;
+
+    public Parser(List<LinkExtractor> pageLinkExtractor) {
+        this.pageLinkExtractor = pageLinkExtractor;
+    }
 
     public List<Link> parse(String content, String baseUri) throws URISyntaxException {
         Document document = Jsoup.parseBodyFragment(content, baseUri);
-        return pageLinkExtractor.extract(document);
+        List<Link> list = new ArrayList<>();
+        for(LinkExtractor extractor : pageLinkExtractor) {
+            list.addAll(extractor.extract(document));
+        }
+        return list;
     }
 
 

@@ -1,5 +1,7 @@
-package com.bart.crawler.model;
+package com.bart.crawler.storage;
 
+
+import com.bart.crawler.model.Link;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -8,11 +10,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import static java.lang.Boolean.*;
 
 /**
  * Created by bart on 22/01/2017.
  */
-public class CrawlLinkStorage {
+public class CrawlerLinkStorage {
 
     private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Lock read = readWriteLock.readLock();
@@ -21,11 +24,21 @@ public class CrawlLinkStorage {
     private Map<Link, Boolean> crawled = new ConcurrentHashMap<>();
     private Map<Link, Boolean> awaiting = new ConcurrentHashMap<>();
 
+    private List<SkipCrawlingMarker> markers;
+
+    public CrawlerLinkStorage(List<SkipCrawlingMarker> markers) {
+        this.markers = markers;
+    }
+
     public void addLink(Link link) {
+        boolean skipCrawling = skipCrawl(link);
+
         write.lock();
         if (!crawled.containsKey(link)) {
-            if (!awaiting.containsKey(link) || Boolean.FALSE.equals(awaiting.get(link))) {
-                awaiting.put(link, Boolean.FALSE);
+            if(skipCrawling) {
+                crawled.put(link, FALSE);
+            } else if (!awaiting.containsKey(link) || FALSE.equals(awaiting.get(link))) {
+                awaiting.put(link, FALSE);
             }
         }
         write.unlock();
@@ -46,9 +59,9 @@ public class CrawlLinkStorage {
         Link next = null;
         while (iterator.hasNext()) {
             entry = iterator.next();
-            if (Boolean.FALSE.equals(entry.getValue())) {
+            if (FALSE.equals(entry.getValue())) {
                 next = entry.getKey();
-                awaiting.put(next, Boolean.TRUE);
+                awaiting.put(next, TRUE);
                 break;
             }
         }
@@ -60,7 +73,7 @@ public class CrawlLinkStorage {
     public void addLinkToCrawled(Link link) {
         write.lock();
         awaiting.remove(link);
-        crawled.put(link, Boolean.FALSE);
+        crawled.put(link, FALSE);
         write.unlock();
     }
 
@@ -69,6 +82,15 @@ public class CrawlLinkStorage {
         int result = awaiting.size();
         read.unlock();
         return result;
+    }
+
+    private boolean skipCrawl(Link link) {
+        for(SkipCrawlingMarker marker: markers) {
+            if(marker.skipCrawling(link)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Map<Link, Boolean> getAwaiting() {
@@ -81,7 +103,7 @@ public class CrawlLinkStorage {
 
     @Override
     public String toString() {
-        return "CrawlLinkStorage{" +
+        return "CrawlerLinkStorage{" +
                 "crawled=" + crawled +
                 ", awaiting=" + awaiting +
                 '}';

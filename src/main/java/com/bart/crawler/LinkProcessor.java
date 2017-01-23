@@ -1,8 +1,10 @@
 package com.bart.crawler;
 
 import com.bart.crawler.model.Link;
+import com.bart.crawler.parser.ImgLinkExtractor;
+import com.bart.crawler.parser.PageLinkExtractor;
 import com.bart.crawler.parser.Parser;
-import com.bart.crawler.util.LinkUtil;
+import com.bart.crawler.util.URIUtil;
 import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
 import org.slf4j.Logger;
@@ -11,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,7 +22,8 @@ import java.util.List;
  */
 public class LinkProcessor {
     private static final Logger logger = LoggerFactory.getLogger(LinkProcessor.class);
-    public Parser parser = new Parser();
+
+    public Parser parser = new Parser(Arrays.asList(new PageLinkExtractor(), new ImgLinkExtractor()));
 
     public List<Link> execute(Link current) {
         String url = current.getUri().toString();
@@ -27,8 +31,7 @@ public class LinkProcessor {
         List<Link> links = null;
         try {
             String content = retrieve(url);
-            links = parse(content, url);
-            return removeOtherDomains(links, current);
+            return parse(content, url);
         } catch (IOException | URISyntaxException e) {
             logger.error("Couldn't retrieve/parse url: {} ", url);
             links = Collections.emptyList();
@@ -44,19 +47,5 @@ public class LinkProcessor {
     protected List<Link> parse(String content, String url) throws URISyntaxException {
         return parser.parse(content, url);
     }
-
-    public List<Link> removeOtherDomains(List<Link> list, Link domainLink) {
-        List<Link> result = new ArrayList<>();
-        for (Link link : list) {
-            if (LinkUtil.isTheSameDomain(domainLink.getUri(), link.getUri())) {
-                logger.debug("Adding link {} for domain {}", link.getUri(), domainLink.getUri());
-                result.add(link);
-            } else {
-                logger.debug("Link {} for domain {} is not added.", link.getUri(), domainLink.getUri());
-            }
-        }
-        return result;
-    }
-
 
 }

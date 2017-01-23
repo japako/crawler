@@ -7,18 +7,18 @@ import org.jsoup.nodes.Element;
 import java.net.URISyntaxException;
 
 /**
- * Created by bart on 22/01/2017.
+ * Created by bart on 23/01/2017.
  */
-public class PageLinkExtractor extends LinkExtractor {
-    private final static String ELEMENT_NAME = "a";
-    private final static String ELEMENT_ATTR = "href";
+public class ImgLinkExtractor extends LinkExtractor {
+    private final static String ELEMENT_NAME = "img";
+    private final static String ELEMENT_ATTR = "src";
 
-    public PageLinkExtractor() {
+    public ImgLinkExtractor() {
         super(ELEMENT_NAME, ELEMENT_ATTR);
     }
 
     @Override
     public Link buildLink(Element element, String attrValue) throws URISyntaxException {
-        return new Link(attrValue, LinkType.PAGE);
+        return new Link(attrValue, LinkType.IMG);
     }
 }

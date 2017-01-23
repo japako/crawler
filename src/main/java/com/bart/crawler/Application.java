@@ -1,7 +1,9 @@
 package com.bart.crawler;
 
-import com.bart.crawler.model.CrawlLinkStorage;
+import com.bart.crawler.model.LinkType;
+import com.bart.crawler.storage.CrawlerLinkStorage;
 import com.bart.crawler.model.Link;
+import com.bart.crawler.util.URIUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -9,10 +11,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.*;
+import java.util.Collection;
 import java.util.Map;
 
 @SpringBootApplication
 public class Application {
+
     private final static Logger logger = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) throws Exception {
@@ -28,35 +32,32 @@ public class Application {
 
     private void start(String url, String path) throws Exception {
         logger.info("Crawling domain: {}", url);
-        CrawlerStrategy crawlerStrategy = new CrawlerStrategy(url);
-        crawlerStrategy.execute();
-        CrawlLinkStorage storage = crawlerStrategy.getStorage();
-        Writer writer = buildWriter(path);
-        printSiteMap(storage, writer);
-        writer.close();
+        Crawler crawler = new Crawler(url);
+        crawler.execute();
         logger.info("Finished crawling domain: {}", url);
+
+        logger.info("Writing found links to: {}", path == null ? "console" : path);
+        printSiteMap(crawler.getLinks(), new Link(url, LinkType.PAGE), buildWriter(path));
     }
 
 
     private Writer buildWriter(String path) throws FileNotFoundException {
-        OutputStream os = null;
+        OutputStream os;
         if (path != null) {
             os = new FileOutputStream(new File(path));
         } else {
             os = System.out;
         }
         return new BufferedWriter(new OutputStreamWriter(os));
-
     }
 
-    private void printSiteMap(CrawlLinkStorage crawlLinkStorage, Writer w) throws IOException {
-        for (Map.Entry<Link, Boolean> entry : crawlLinkStorage.getCrawled().entrySet()) {
-            w.write(entry.getKey().getUri().toString());
-            w.write("\n");
-        }
-        w.write("---------------------------------------------------\n");
-        for (Map.Entry<Link, Boolean> entry : crawlLinkStorage.getAwaiting().entrySet()) {
-            w.write(entry.getKey().getUri().toString());
+    private void printSiteMap(Collection<Link> links, Link crawledDomain, Writer w) throws IOException {
+        for (Link link : links) {
+            w.write(link.getLinkType().toString());
+            w.write("|");
+            w.write(URIUtil.isTheSameDomain(crawledDomain.getUri(), link.getUri()) ? "I" : "E");
+            w.write("|");
+            w.write(link.getUri().toString());
             w.write("\n");
         }
     }

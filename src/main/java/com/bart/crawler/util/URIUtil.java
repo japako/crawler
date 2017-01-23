@@ -5,7 +5,7 @@ import java.net.URI;
 /**
  * Created by bart on 22/01/2017.
  */
-public class LinkUtil {
+public class URIUtil {
 
     /**
      * Checks if domain is equals to domain of provided uri.
