@@ -21,7 +21,10 @@ If you want to use a different setting please create a file `myconfig.properites
 
 
 **Limitations of this solution**
-* TBD
+* Crawler doesn't use multi-threading in the best way.
+* There is no retry strategy for failing connections etc.
+* There is just one sample of test. 
+
 
 **Things to improve**
 The important question is why do we want to improve. First of all the program can work as requested and therfore Acceptance Criteria could be met. However there arethings that should be improved by looking at the project from engenieering point fo view. List of potential improvements:
