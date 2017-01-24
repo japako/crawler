@@ -1,8 +1,7 @@
 package com.bart.crawler;
 
-import com.bart.crawler.model.LinkType;
-import com.bart.crawler.storage.CrawlerLinkStorage;
 import com.bart.crawler.model.Link;
+import com.bart.crawler.model.LinkType;
 import com.bart.crawler.util.URIUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +12,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.*;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Set;
 
 @SpringBootApplication
